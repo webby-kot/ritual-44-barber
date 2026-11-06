@@ -15,6 +15,18 @@ with sqlite3.connect(DB) as conn:
     conn.execute('CREATE TABLE IF NOT EXISTS requests (id TEXT PRIMARY KEY, created TEXT, data TEXT, status TEXT, delivery TEXT)')
 
 def notify(data, reference):
+    # Local credentials stay outside tracked source. Reload for setup without restart.
+    local_config = ROOT / 'private' / 'telegram.json'
+    if local_config.exists():
+        try:
+            config = json.loads(local_config.read_text())
+            if config.get('token') and config.get('chat_id'):
+                os.environ.setdefault('TELEGRAM_BOT_TOKEN', config['token'])
+                os.environ.setdefault('TELEGRAM_CHAT_ID', str(config['chat_id']))
+                if not os.environ.get('NOTIFY_CHANNELS'):
+                    os.environ['NOTIFY_CHANNELS'] = 'telegram'
+        except (ValueError, OSError):
+            pass
     message = f"RITUAL 44 / {reference}\n" + '\n'.join(f'{k}: {v}' for k,v in data.items())
     results = {}
     channels = os.environ.get('NOTIFY_CHANNELS', '').split(',')
